@@ -4,6 +4,9 @@ import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { getBusTypeLabel } from '@/lib/dart-bus-types';
 import {
   Select,
   SelectContent,
@@ -42,6 +45,7 @@ export default function WeighingPage() {
   const { selectedVehicle, setSelectedVehicle, addMeasurement, vehicles } = useLoadGuardStore();
   
   const [capturedWeight, setCapturedWeight] = useState<number | null>(null);
+  const [passengerCount, setPassengerCount] = useState<string>('');
   const [lastMeasurement, setLastMeasurement] = useState<Measurement | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
 
@@ -57,6 +61,7 @@ export default function WeighingPage() {
       setSelectedVehicle(vehicle);
       setCapturedWeight(null);
       setLastMeasurement(null);
+      setPassengerCount('');
     }
   };
 
@@ -75,10 +80,12 @@ export default function WeighingPage() {
     const measuredWeight = weight.value;
 
     try {
+      const pax = passengerCount.trim() ? parseInt(passengerCount, 10) : undefined;
       const { data } = await measurementApi.create({
         vehicleId: selectedVehicle.id,
         measuredWeight,
         allowedWeight: selectedVehicle.allowedWeight,
+        measuredPassengers: Number.isFinite(pax) ? pax : undefined,
         operator: operatorName,
         timestamp: new Date(),
       });
@@ -103,11 +110,12 @@ export default function WeighingPage() {
     } finally {
       setIsCapturing(false);
     }
-  }, [selectedVehicle, weight, addMeasurement, operatorName]);
+  }, [selectedVehicle, weight, passengerCount, addMeasurement, operatorName]);
 
   const handleReset = () => {
     resetWeight();
     setCapturedWeight(null);
+    setPassengerCount('');
     setLastMeasurement(null);
     toast.info('Scale reset');
   };
@@ -167,7 +175,7 @@ export default function WeighingPage() {
                           <span className="text-muted-foreground">-</span>
                           <span>{vehicle.driver}</span>
                           <Badge variant="outline" className="ml-2">
-                            {vehicle.allowedWeight.toLocaleString()} kg
+                            {getBusTypeLabel(vehicle.vehicleType)}
                           </Badge>
                         </div>
                       </SelectItem>
@@ -176,8 +184,29 @@ export default function WeighingPage() {
                 </Select>
               </div>
               {selectedVehicle && (
-                <div className="mt-4">
-                  <VehicleInfoCard vehicle={selectedVehicle} />
+                <div className="mt-4 space-y-4">
+                  <VehicleInfoCard
+                    vehicle={selectedVehicle}
+                    measuredPassengers={
+                      passengerCount.trim() ? parseInt(passengerCount, 10) : null
+                    }
+                  />
+                  <div className="space-y-2 max-w-xs">
+                    <Label htmlFor="passengerCount">Passengers on board (optional)</Label>
+                    <Input
+                      id="passengerCount"
+                      type="number"
+                      min={0}
+                      max={selectedVehicle.maxPassengers + 50}
+                      placeholder={`Max ${selectedVehicle.maxPassengers}`}
+                      value={passengerCount}
+                      onChange={(e) => setPassengerCount(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Manufacturer limit: {selectedVehicle.maxPassengers} passengers for this bus
+                      model
+                    </p>
+                  </div>
                 </div>
               )}
             </CardContent>

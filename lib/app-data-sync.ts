@@ -18,6 +18,8 @@ function vehiclesUnchanged(prev: Vehicle[], next: Vehicle[]): boolean {
   return prev.every((v, i) => {
     const n = next[i];
     if (v.id !== n.id) return false;
+    if (v.maxPassengers !== n.maxPassengers) return false;
+    if (v.allowedWeight !== n.allowedWeight) return false;
     const pl = v.currentLocation;
     const nl = n.currentLocation;
     if (!pl && !nl) return true;

@@ -34,7 +34,8 @@ export interface Vehicle {
   driver: string;
   company: string;
   allowedWeight: number;
-  vehicleType: 'truck' | 'trailer' | 'tanker' | 'container' | 'van';
+  maxPassengers: number;
+  vehicleType: 'xml6185c' | 'xml6125c' | 'xml6125_feeder';
   gpsDevice?: GPSDevice;
   currentLocation?: GPSLocation;
   createdAt: Date;
@@ -47,6 +48,8 @@ export interface Measurement {
   vehicle?: Vehicle;
   measuredWeight: number;
   allowedWeight: number;
+  measuredPassengers?: number;
+  maxPassengers?: number;
   excessWeight: number;
   status: 'SAFE' | 'UNDERLOAD' | 'OVERLOAD';
   operator: string;

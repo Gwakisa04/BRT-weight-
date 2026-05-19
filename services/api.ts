@@ -45,8 +45,22 @@ export const authApi = {
   logout: () => api.post('/auth/logout'),
 };
 
+export interface DartBusTypeSpec {
+  id: string;
+  model: string;
+  category: string;
+  lengthMeters: number;
+  maxPassengers: number;
+  seatedPassengers: number;
+  standingPassengers: number;
+  maxGrossWeightKg: number;
+  primaryUsage: string;
+  articulated: boolean;
+}
+
 // Vehicles API
 export const vehicleApi = {
+  getBusTypes: () => api.get<DartBusTypeSpec[]>('/vehicles/bus-types'),
   getAll: () => api.get<Vehicle[]>('/vehicles'),
   getById: (id: string) => api.get<Vehicle>(`/vehicles/${id}`),
   create: (data: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>) => 
@@ -72,6 +86,7 @@ export const measurementApi = {
     vehicleId: string;
     measuredWeight: number;
     allowedWeight?: number;
+    measuredPassengers?: number;
     operator: string;
     timestamp?: Date | string;
   }) => api.post<Measurement>('/measurements', data),

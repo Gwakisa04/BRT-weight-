@@ -71,6 +71,12 @@ import {
   Navigation,
 } from 'lucide-react';
 import type { Vehicle, GPSDevice, GPSLocation } from '@/types';
+import {
+  DART_BUS_TYPES,
+  applyBusTypeDefaults,
+  getBusTypeLabel,
+  getDartBusType,
+} from '@/lib/dart-bus-types';
 import { format } from 'date-fns';
 
 // Dynamically import the LocationPanel to avoid SSR issues
@@ -86,19 +92,12 @@ const LocationPanel = dynamic(
   }
 );
 
-const vehicleTypes = [
-  { value: 'truck', label: 'Truck' },
-  { value: 'trailer', label: 'Trailer' },
-  { value: 'tanker', label: 'Tanker' },
-  { value: 'container', label: 'Container' },
-  { value: 'van', label: 'Van' },
-];
-
 interface VehicleFormData {
   plateNumber: string;
   driver: string;
   company: string;
   allowedWeight: string;
+  maxPassengers: string;
   vehicleType: Vehicle['vehicleType'];
   gpsEnabled: boolean;
   deviceId: string;
@@ -109,9 +108,10 @@ interface VehicleFormData {
 const initialFormData: VehicleFormData = {
   plateNumber: '',
   driver: '',
-  company: '',
-  allowedWeight: '',
-  vehicleType: 'truck',
+  allowedWeight: '18000',
+  maxPassengers: '90',
+  vehicleType: 'xml6125c',
+  company: 'DART',
   gpsEnabled: false,
   deviceId: '',
   imei: '',
@@ -129,6 +129,18 @@ function VehicleForm({
   activeTab: string;
   onTabChange: (value: string) => void;
 }) {
+  const selectedSpec = getDartBusType(formData.vehicleType);
+
+  const onBusTypeChange = (value: Vehicle['vehicleType']) => {
+    const defaults = applyBusTypeDefaults(value);
+    setFormData((prev) => ({
+      ...prev,
+      vehicleType: value,
+      allowedWeight: defaults.allowedWeight,
+      maxPassengers: defaults.maxPassengers,
+    }));
+  };
+
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
       <TabsList className="grid w-full grid-cols-2">
@@ -148,31 +160,39 @@ function VehicleForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="vehicleType">Vehicle Type</Label>
+            <Label htmlFor="vehicleType">DART bus model *</Label>
             <Select
               value={formData.vehicleType}
-              onValueChange={(value: Vehicle['vehicleType']) => 
-                setFormData({ ...formData, vehicleType: value })
-              }
+              onValueChange={onBusTypeChange}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {vehicleTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
+                {DART_BUS_TYPES.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.model}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
         </div>
+        {selectedSpec && (
+          <motion.div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">{selectedSpec.category}</p>
+            <p className="mt-1">{selectedSpec.primaryUsage}</p>
+            <p className="mt-2 text-xs">
+              {selectedSpec.lengthMeters} m · GVWR {selectedSpec.maxGrossWeightKg.toLocaleString()} kg · max{' '}
+              {selectedSpec.maxPassengers} passengers
+            </p>
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="driver">Driver Name *</Label>
           <Input
             id="driver"
-            placeholder="John Doe"
+            placeholder="Driver name"
             value={formData.driver}
             onChange={(e) => setFormData({ ...formData, driver: e.target.value })}
           />
@@ -186,15 +206,27 @@ function VehicleForm({
             onChange={(e) => setFormData({ ...formData, company: e.target.value })}
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="allowedWeight">Allowed Weight (kg) *</Label>
-          <Input
-            id="allowedWeight"
-            type="number"
-            placeholder="25000"
-            value={formData.allowedWeight}
-            onChange={(e) => setFormData({ ...formData, allowedWeight: e.target.value })}
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="allowedWeight">Max gross weight / GVWR (kg) *</Label>
+            <Input
+              id="allowedWeight"
+              type="number"
+              value={formData.allowedWeight}
+              onChange={(e) => setFormData({ ...formData, allowedWeight: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">Auto-filled from bus model (editable)</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="maxPassengers">Max passengers *</Label>
+            <Input
+              id="maxPassengers"
+              type="number"
+              value={formData.maxPassengers}
+              onChange={(e) => setFormData({ ...formData, maxPassengers: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">Auto-filled from manufacturer capacity</p>
+          </div>
         </div>
       </TabsContent>
 
@@ -309,7 +341,7 @@ export default function VehiclesPage() {
   };
 
   const handleAdd = async () => {
-    if (!formData.plateNumber || !formData.driver || !formData.allowedWeight) {
+    if (!formData.plateNumber || !formData.driver || !formData.allowedWeight || !formData.maxPassengers) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -338,7 +370,8 @@ export default function VehiclesPage() {
         plateNumber: formData.plateNumber.toUpperCase(),
         driver: formData.driver,
         company: formData.company,
-        allowedWeight: parseInt(formData.allowedWeight),
+        allowedWeight: parseInt(formData.allowedWeight, 10),
+        maxPassengers: parseInt(formData.maxPassengers, 10),
         vehicleType: formData.vehicleType,
         gpsDevice,
       });
@@ -381,7 +414,8 @@ export default function VehiclesPage() {
         plateNumber: formData.plateNumber.toUpperCase(),
         driver: formData.driver,
         company: formData.company,
-        allowedWeight: parseInt(formData.allowedWeight),
+        allowedWeight: parseInt(formData.allowedWeight, 10),
+        maxPassengers: parseInt(formData.maxPassengers, 10),
         vehicleType: formData.vehicleType,
         gpsDevice,
       });
@@ -412,7 +446,8 @@ export default function VehiclesPage() {
       driver: vehicle.driver,
       company: vehicle.company,
       allowedWeight: vehicle.allowedWeight.toString(),
-      vehicleType: vehicle.vehicleType,
+      maxPassengers: (vehicle.maxPassengers ?? 80).toString(),
+      vehicleType: vehicle.vehicleType as Vehicle['vehicleType'],
       gpsEnabled: !!vehicle.gpsDevice,
       deviceId: vehicle.gpsDevice?.deviceId || '',
       imei: vehicle.gpsDevice?.imei || '',
@@ -496,9 +531,9 @@ export default function VehiclesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                {vehicleTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
+                {DART_BUS_TYPES.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.model}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -524,7 +559,8 @@ export default function VehiclesPage() {
                   <TableHead>Driver</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>GPS</TableHead>
-                  <TableHead className="text-right">Allowed Weight</TableHead>
+                  <TableHead className="text-right">GVWR (kg)</TableHead>
+                  <TableHead className="text-right">Max pax</TableHead>
                   <TableHead>Added</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -532,7 +568,7 @@ export default function VehiclesPage() {
               <TableBody>
                 {filteredVehicles.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <div className="text-muted-foreground">
                         <Truck className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         <p>No vehicles found</p>
@@ -541,7 +577,7 @@ export default function VehiclesPage() {
                   </TableRow>
                 ) : (
                   filteredVehicles.map((vehicle) => {
-                    const type = vehicleTypes.find((t) => t.value === vehicle.vehicleType);
+                    const typeLabel = getBusTypeLabel(vehicle.vehicleType);
                     const hasGPS = !!vehicle.gpsDevice;
                     const gpsActive = vehicle.gpsDevice?.isActive ?? false;
                     const hasLocation = !!getVehicleLocation(vehicle);
@@ -549,7 +585,7 @@ export default function VehiclesPage() {
                     return (
                       <TableRow key={vehicle.id}>
                         <TableCell>
-                          <Badge variant="outline">{type?.label || 'Truck'}</Badge>
+                          <Badge variant="outline">{typeLabel}</Badge>
                         </TableCell>
                         <TableCell className="font-bold">
                           {vehicle.plateNumber}
@@ -584,6 +620,9 @@ export default function VehiclesPage() {
                           <Badge variant="outline">
                             {vehicle.allowedWeight.toLocaleString()} kg
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {vehicle.maxPassengers ?? '—'}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
                           {format(new Date(vehicle.createdAt), 'PP')}

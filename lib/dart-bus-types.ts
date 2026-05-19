@@ -5,6 +5,8 @@ export type DartBusTypeId = Vehicle['vehicleType'];
 export interface DartBusTypeSpec {
   id: DartBusTypeId;
   model: string;
+  /** Compact label for selects and narrow layouts */
+  shortLabel: string;
   category: string;
   lengthMeters: number;
   maxPassengers: number;
@@ -19,6 +21,7 @@ export const DART_BUS_TYPES: DartBusTypeSpec[] = [
   {
     id: 'xml6185c',
     model: 'Golden Dragon XML6185C',
+    shortLabel: 'XML6185C · Articulated 18m',
     category: 'Articulated trunk bus',
     lengthMeters: 18,
     maxPassengers: 155,
@@ -32,6 +35,7 @@ export const DART_BUS_TYPES: DartBusTypeSpec[] = [
   {
     id: 'xml6125c',
     model: 'Golden Dragon XML6125C / XML6127',
+    shortLabel: 'XML6125C · Trunk 12m',
     category: 'Rigid trunk bus',
     lengthMeters: 12,
     maxPassengers: 90,
@@ -44,6 +48,7 @@ export const DART_BUS_TYPES: DartBusTypeSpec[] = [
   {
     id: 'xml6125_feeder',
     model: 'Golden Dragon XML6125 Feeder',
+    shortLabel: 'XML6125 · Feeder 12m',
     category: 'Rigid feeder bus',
     lengthMeters: 12,
     maxPassengers: 80,
@@ -63,7 +68,8 @@ export function getDartBusType(id: string): DartBusTypeSpec | undefined {
 }
 
 export function getBusTypeLabel(id: string): string {
-  return getDartBusType(id)?.model ?? id;
+  const spec = getDartBusType(id);
+  return spec?.shortLabel ?? spec?.model ?? id;
 }
 
 export function applyBusTypeDefaults(id: DartBusTypeId): {

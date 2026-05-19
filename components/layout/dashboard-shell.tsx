@@ -10,11 +10,15 @@ import { SensorProvider } from '@/components/providers/sensor-provider';
 import { BackendDataProvider } from '@/components/providers/backend-data-provider';
 import { GpsTrackingProvider } from '@/components/providers/gps-tracking-provider';
 import { AuthGuard } from '@/components/auth/auth-guard';
+import { useResponsiveSidebar } from '@/hooks/use-responsive-sidebar';
 
 function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const sidebarOpen = useLoadGuardStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useLoadGuardStore((s) => s.setSidebarOpen);
   const theme = useLoadGuardStore((s) => s.theme);
   const setTheme = useLoadGuardStore((s) => s.setTheme);
+
+  useResponsiveSidebar();
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -32,25 +36,34 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthGuard>
-    <SensorProvider>
-      <BackendDataProvider>
-        <GpsTrackingProvider>
-          <div className="min-h-screen bg-background">
-            <AppSidebar />
-            <div
-              className={cn(
-                'flex flex-col transition-[margin] duration-200 ease-out',
-                sidebarOpen ? 'lg:ml-64' : 'lg:ml-16'
+      <SensorProvider>
+        <BackendDataProvider>
+          <GpsTrackingProvider>
+            <div className="min-h-screen bg-background">
+              {sidebarOpen && (
+                <button
+                  type="button"
+                  aria-label="Close navigation menu"
+                  className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] lg:hidden"
+                  onClick={() => setSidebarOpen(false)}
+                />
               )}
-            >
-              <TopNavbar />
-              <main className="flex-1 p-4 lg:p-6">{children}</main>
+              <AppSidebar />
+              <div
+                className={cn(
+                  'flex min-h-screen flex-col transition-[margin] duration-200 ease-out',
+                  'ml-0',
+                  sidebarOpen ? 'lg:ml-64' : 'lg:ml-16'
+                )}
+              >
+                <TopNavbar />
+                <main className="flex-1 overflow-x-hidden p-3 sm:p-4 lg:p-6">{children}</main>
+              </div>
+              <Toaster position="top-right" />
             </div>
-            <Toaster position="top-right" />
-          </div>
-        </GpsTrackingProvider>
-      </BackendDataProvider>
-    </SensorProvider>
+          </GpsTrackingProvider>
+        </BackendDataProvider>
+      </SensorProvider>
     </AuthGuard>
   );
 }

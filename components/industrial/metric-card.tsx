@@ -111,3 +111,57 @@ export function StatsGrid({ stats, className, columns = 4 }: StatsGridProps) {
     </div>
   );
 }
+
+const variantAccent: Record<
+  NonNullable<StatsGridProps['stats'][number]['variant']> | 'default',
+  string
+> = {
+  default: 'text-primary',
+  success: 'text-emerald-500',
+  warning: 'text-amber-500',
+  danger: 'text-red-500',
+};
+
+/** Combined stats on small screens; grid from md breakpoint up. */
+export function DashboardStatsPanel({ stats, className }: StatsGridProps) {
+  return (
+    <>
+      <Card className={cn('overflow-hidden md:hidden', className)}>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold">Today&apos;s overview</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-2 gap-px rounded-lg border bg-border overflow-hidden">
+            {stats.map((stat, i) => {
+              const Icon = stat.icon;
+              const variant = stat.variant ?? 'default';
+              return (
+                <div key={i} className="flex flex-col gap-1 bg-card p-3 min-h-[88px]">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-medium text-muted-foreground leading-tight line-clamp-2">
+                      {stat.title}
+                    </span>
+                    {Icon && (
+                      <Icon className={cn('h-4 w-4 shrink-0', variantAccent[variant])} />
+                    )}
+                  </div>
+                  <span className={cn('text-2xl font-bold tabular-nums', variantAccent[variant])}>
+                    {stat.value}
+                  </span>
+                  {stat.subtitle && (
+                    <span className="text-[10px] text-muted-foreground line-clamp-1">
+                      {stat.subtitle}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+      <div className="hidden md:block">
+        <StatsGrid stats={stats} columns={4} />
+      </div>
+    </>
+  );
+}

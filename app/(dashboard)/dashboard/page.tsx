@@ -8,7 +8,7 @@ import { SystemStatusPanel } from '@/components/industrial/sensor-status-badge';
 import { AlarmIndicator } from '@/components/industrial/alarm-indicator';
 import { VehicleInfoCard } from '@/components/industrial/vehicle-info-card';
 import { MeasurementTable } from '@/components/industrial/measurement-table';
-import { StatsGrid } from '@/components/industrial/metric-card';
+import { DashboardStatsPanel } from '@/components/industrial/metric-card';
 import { WeightStatusBadge } from '@/components/industrial/weight-status';
 import { useLoadGuardStore } from '@/store/loadguard-store';
 import { useLiveWeight, useSystemStatus } from '@/hooks/use-sensor';
@@ -61,10 +61,10 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Dashboard</h1>
           <p className="text-muted-foreground">
             {backendConnected
               ? 'Live stats from database · weight display simulated until sensor connected'
@@ -78,9 +78,9 @@ export default function DashboardPage() {
         />
       </div>
 
-      <StatsGrid stats={stats} />
+      <DashboardStatsPanel stats={stats} />
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -122,7 +122,7 @@ export default function DashboardPage() {
             </CardTitle>
             <CardDescription>Weekly measurement breakdown from database</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-w-0 overflow-hidden pb-2">
             <WeeklyBarChart />
           </CardContent>
         </Card>

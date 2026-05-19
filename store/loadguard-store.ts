@@ -50,6 +50,7 @@ interface LoadGuardState {
   updateSettings: (settings: Partial<SystemSettings>) => void;
   setTheme: (theme: 'light' | 'dark') => void;
   toggleSidebar: () => void;
+  setSidebarOpen: (open: boolean) => void;
   updateDailyStats: (stats: Partial<DailyStats>) => void;
   setGpsSync: (sync: Partial<GpsSyncState>) => void;
 }
@@ -116,7 +117,7 @@ export const useLoadGuardStore = create<LoadGuardState>()(
       gpsSync: initialGpsSync,
       settings: initialSettings,
       theme: 'dark',
-      sidebarOpen: true,
+      sidebarOpen: false,
       
       // Actions
       setLiveWeight: (weight) => set({ liveWeight: weight }),
@@ -169,6 +170,8 @@ export const useLoadGuardStore = create<LoadGuardState>()(
       
       toggleSidebar: () =>
         set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+
+      setSidebarOpen: (open) => set({ sidebarOpen: open }),
       
       updateDailyStats: (stats) =>
         set((state) => ({

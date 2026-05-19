@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLoadGuardStore } from '@/store/loadguard-store';
+import { closeSidebarOnMobile } from '@/hooks/use-responsive-sidebar';
 import {
   LayoutDashboard,
   Scale,
@@ -40,8 +41,9 @@ function NavLink({
 }) {
   const link = (
     <Link
-      prefetch={true}
+      prefetch
       href={item.href}
+      onClick={() => closeSidebarOnMobile()}
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
         isActive
@@ -76,23 +78,37 @@ function AppSidebarInner() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-sidebar transition-[width] duration-200',
-          sidebarOpen ? 'w-64' : 'w-16'
+          'fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-sidebar transition-transform duration-200 ease-out',
+          'w-64',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          'lg:translate-x-0',
+          !sidebarOpen && 'lg:w-16',
+          sidebarOpen && 'lg:w-64'
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b px-4">
-          <Link prefetch href="/dashboard" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+        <div className="flex h-16 items-center justify-between border-b px-3 lg:px-4">
+          <Link
+            prefetch
+            href="/dashboard"
+            onClick={() => closeSidebarOnMobile()}
+            className="flex min-w-0 items-center gap-3"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
               <Shield className="h-5 w-5 text-primary-foreground" />
             </div>
             {sidebarOpen && (
-              <div className="flex flex-col">
-                <span className="font-bold text-sidebar-foreground">BRT Monitor</span>
-                <span className="text-xs text-muted-foreground">System</span>
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate font-bold text-sidebar-foreground">BRT Monitor</span>
+                <span className="text-xs text-muted-foreground">DART System</span>
               </div>
             )}
           </Link>
-          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="h-8 w-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="hidden h-8 w-8 shrink-0 lg:inline-flex"
+          >
             {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </Button>
         </div>

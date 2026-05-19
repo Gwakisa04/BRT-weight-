@@ -148,34 +148,37 @@ function VehicleForm({
         <TabsTrigger value="gps">GPS Device</TabsTrigger>
       </TabsList>
       
-      <TabsContent value="vehicle" className="space-y-4 mt-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
+      <TabsContent value="vehicle" className="space-y-4 mt-4 min-w-0">
+        <div className="space-y-2">
+          <Label htmlFor="vehicleType">DART bus model *</Label>
+          <Select value={formData.vehicleType} onValueChange={onBusTypeChange}>
+            <SelectTrigger className="w-full min-w-0 h-auto min-h-10 py-2 [&>span]:line-clamp-2 [&>span]:text-left [&>span]:whitespace-normal">
+              <SelectValue placeholder="Select bus type">
+                {getBusTypeLabel(formData.vehicleType)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-w-[min(calc(100vw-2rem),24rem)]">
+              {DART_BUS_TYPES.map((type) => (
+                <SelectItem key={type.id} value={type.id} className="items-start py-2.5">
+                  <div className="flex flex-col gap-0.5 text-left">
+                    <span className="font-medium leading-snug">{type.shortLabel}</span>
+                    <span className="text-xs text-muted-foreground line-clamp-2">{type.category}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2 sm:max-w-xs">
             <Label htmlFor="plateNumber">Plate Number *</Label>
             <Input
               id="plateNumber"
-              placeholder="KBA 123A"
+              placeholder="T 101 DAR"
               value={formData.plateNumber}
               onChange={(e) => setFormData({ ...formData, plateNumber: e.target.value })}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="vehicleType">DART bus model *</Label>
-            <Select
-              value={formData.vehicleType}
-              onValueChange={onBusTypeChange}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DART_BUS_TYPES.map((type) => (
-                  <SelectItem key={type.id} value={type.id}>
-                    {type.model}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
         {selectedSpec && (
@@ -206,7 +209,7 @@ function VehicleForm({
             onChange={(e) => setFormData({ ...formData, company: e.target.value })}
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="allowedWeight">Max gross weight / GVWR (kg) *</Label>
             <Input
@@ -477,8 +480,8 @@ export default function VehiclesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Truck className="h-8 w-8 text-primary" />
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl flex items-center gap-2">
+            <Truck className="h-7 w-7 sm:h-8 sm:w-8 text-primary shrink-0" />
             Vehicle Management
           </h1>
           <p className="text-muted-foreground">
@@ -494,7 +497,7 @@ export default function VehiclesPage() {
               Add Vehicle
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="w-[calc(100vw-1.5rem)] max-w-lg max-h-[min(90vh,720px)] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Vehicle</DialogTitle>
               <DialogDescription>
@@ -669,7 +672,7 @@ export default function VehiclesPage() {
       </Card>
 
       <Dialog open={isEditOpen} onOpenChange={(open) => { setIsEditOpen(open); if (!open) { setEditingVehicle(null); resetForm(); }}}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-lg max-h-[min(90vh,720px)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Vehicle</DialogTitle>
             <DialogDescription>

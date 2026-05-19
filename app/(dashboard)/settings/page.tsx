@@ -70,7 +70,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl flex items-center gap-2">
             <Settings className="h-8 w-8 text-primary" />
             System Settings
           </h1>

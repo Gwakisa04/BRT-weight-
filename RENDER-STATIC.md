@@ -30,8 +30,16 @@ NEXT_PUBLIC_GPS_POLL_INTERVAL_MS=5000
 On **brt-weight-backend** (Render → Environment), include your static site URL:
 
 ```env
-CORS_ORIGIN=https://YOUR-FRONTEND.onrender.com,http://localhost:3000
+CORS_ORIGIN=https://brtweight.onrender.com,http://localhost:3000
 ```
+
+Or only:
+
+```env
+FRONTEND_URL=https://brtweight.onrender.com
+```
+
+Redeploy the **backend** after changing env vars.
 
 ## After deploy
 

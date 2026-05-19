@@ -179,7 +179,7 @@ function VehicleForm({
           </div>
         </div>
         {selectedSpec && (
-          <motion.div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm text-muted-foreground">
+          <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm text-muted-foreground">
             <p className="font-medium text-foreground">{selectedSpec.category}</p>
             <p className="mt-1">{selectedSpec.primaryUsage}</p>
             <p className="mt-2 text-xs">

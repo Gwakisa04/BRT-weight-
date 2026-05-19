@@ -31,12 +31,10 @@ export function TopNavbar({ className }: TopNavbarProps) {
   const backendConnected = useLoadGuardStore((s) => s.systemStatus.backendConnected);
   const buzzerActive = useLoadGuardStore((s) => s.systemStatus.buzzerActive);
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+  const handleLogout = () => {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem('brt_user');
     router.push('/login');
-    router.refresh();
   };
 
   return (

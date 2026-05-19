@@ -64,7 +64,8 @@ const initialSettings: SystemSettings = {
   alarmVolume: 80,
   printerEnabled: true,
   printerName: 'Default Printer',
-  backendUrl: 'http://localhost:3001',
+  backendUrl:
+    process.env.NEXT_PUBLIC_SOCKET_URL ?? 'https://brt-weight-backend.onrender.com',
   sensorId: 'ESP32-001',
   calibrationOffset: 0,
 };

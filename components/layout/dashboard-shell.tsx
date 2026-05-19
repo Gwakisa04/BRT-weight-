@@ -9,6 +9,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { SensorProvider } from '@/components/providers/sensor-provider';
 import { BackendDataProvider } from '@/components/providers/backend-data-provider';
 import { GpsTrackingProvider } from '@/components/providers/gps-tracking-provider';
+import { AuthGuard } from '@/components/auth/auth-guard';
 
 function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const sidebarOpen = useLoadGuardStore((s) => s.sidebarOpen);
@@ -30,6 +31,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   }, [setTheme]);
 
   return (
+    <AuthGuard>
     <SensorProvider>
       <BackendDataProvider>
         <GpsTrackingProvider>
@@ -49,6 +51,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
         </GpsTrackingProvider>
       </BackendDataProvider>
     </SensorProvider>
+    </AuthGuard>
   );
 }
 

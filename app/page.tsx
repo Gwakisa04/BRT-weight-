@@ -1,15 +1,22 @@
-import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
-import { AUTH_COOKIE, isAuthenticatedCookie } from '@/lib/auth';
+'use client';
 
-/** Root URL: login first; dashboard only when already signed in. */
-export default async function RootPage() {
-  const cookieStore = await cookies();
-  const session = cookieStore.get(AUTH_COOKIE)?.value;
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { AUTH_TOKEN_KEY } from '@/lib/auth';
+import { Loader2 } from 'lucide-react';
 
-  if (isAuthenticatedCookie(session)) {
-    redirect('/dashboard');
-  }
+/** Root URL: send guests to login, signed-in users to dashboard. */
+export default function RootPage() {
+  const router = useRouter();
 
-  redirect('/login');
+  useEffect(() => {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    router.replace(token && token.length > 10 ? '/dashboard' : '/login');
+  }, [router]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <Loader2 className="size-8 animate-spin text-muted-foreground" />
+    </div>
+  );
 }

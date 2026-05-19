@@ -369,7 +369,7 @@ export default function SettingsPage() {
                 <Label htmlFor="backendUrl">Backend URL</Label>
                 <Input
                   id="backendUrl"
-                  placeholder="http://localhost:3001"
+                  placeholder="https://brt-weight-backend.onrender.com"
                   value={localSettings.backendUrl}
                   onChange={(e) =>
                     setLocalSettings({ ...localSettings, backendUrl: e.target.value })

@@ -20,6 +20,8 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { AUTH_TOKEN_KEY } from '@/lib/auth';
+import { authApi } from '@/services/api';
+import { isAxiosError } from 'axios';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,22 +35,17 @@ export default function LoginPage() {
     document.documentElement.classList.add('dark');
     const saved = localStorage.getItem('brt_remember_email');
     if (saved) setEmail(saved);
-  }, []);
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (token && token.length > 10) {
+      router.replace('/dashboard');
+    }
+  }, [router]);
 
   const signIn = async (userEmail: string, pass: string) => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail, password: pass }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? 'Login failed');
-        return;
-      }
+      const { data } = await authApi.login(userEmail, pass);
       if (data.token) {
         localStorage.setItem(AUTH_TOKEN_KEY, data.token);
       }
@@ -59,8 +56,12 @@ export default function LoginPage() {
       else localStorage.removeItem('brt_remember_email');
       router.push('/dashboard');
       router.refresh();
-    } catch {
-      setError('Unable to reach the server. Check your connection and try again.');
+    } catch (err) {
+      if (isAxiosError(err)) {
+        setError(err.response?.data?.error ?? 'Login failed');
+      } else {
+        setError('Unable to reach the server. Check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }

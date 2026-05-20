@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getBusTypeLabel } from '@/lib/dart-bus-types';
 import {
   Select,
@@ -19,35 +20,41 @@ import { SystemStatusPanel } from '@/components/industrial/sensor-status-badge';
 import { AlarmIndicator } from '@/components/industrial/alarm-indicator';
 import { VehicleInfoCard } from '@/components/industrial/vehicle-info-card';
 import { TicketPreview } from '@/components/industrial/ticket-preview';
+import { TicketReceiptDialog } from '@/components/industrial/ticket-receipt-dialog';
 import { WeightComparison, WeightStatusBadge } from '@/components/industrial/weight-status';
 import { useLoadGuardStore } from '@/store/loadguard-store';
 import { useLiveWeight, useSystemStatus } from '@/hooks/use-sensor';
 import { measurementApi } from '@/services/api';
+import { socketService } from '@/services/socket';
 import { normalizeMeasurement } from '@/lib/api-normalize';
 import { refreshBackendData } from '@/lib/backend-sync';
 import { toast } from 'sonner';
-import { 
-  Scale, 
-  Camera, 
-  RotateCcw, 
-  Volume2, 
-  VolumeX, 
-  Wifi, 
+import {
+  Scale,
+  Camera,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  Wifi,
   Activity,
   Printer,
   CheckCircle2,
+  Truck,
 } from 'lucide-react';
 import type { Measurement } from '@/types';
 
 export default function WeighingPage() {
   const { weight, status, resetWeight } = useLiveWeight();
   const { status: systemStatus, toggleBuzzer } = useSystemStatus();
-  const { selectedVehicle, setSelectedVehicle, addMeasurement, vehicles } = useLoadGuardStore();
-  
+  const { selectedVehicle, setSelectedVehicle, addMeasurement, vehicles, settings } =
+    useLoadGuardStore();
+  const bumpScaleSession = useLoadGuardStore((s) => s.bumpScaleSession);
+
   const [capturedWeight, setCapturedWeight] = useState<number | null>(null);
   const [passengerCount, setPassengerCount] = useState<string>('');
   const [lastMeasurement, setLastMeasurement] = useState<Measurement | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   const availableVehicles = vehicles;
   const operatorName =
@@ -56,12 +63,13 @@ export default function WeighingPage() {
       : 'Operator';
 
   const handleVehicleSelect = (vehicleId: string) => {
-    const vehicle = availableVehicles.find(v => v.id === vehicleId);
+    const vehicle = availableVehicles.find((v) => v.id === vehicleId);
     if (vehicle) {
       setSelectedVehicle(vehicle);
       setCapturedWeight(null);
       setLastMeasurement(null);
       setPassengerCount('');
+      bumpScaleSession();
     }
   };
 
@@ -95,8 +103,13 @@ export default function WeighingPage() {
       setLastMeasurement(saved);
       addMeasurement(saved);
       await refreshBackendData();
+      setReceiptOpen(true);
 
       if (saved.status === 'OVERLOAD') {
+        if (settings.alarmEnabled) {
+          socketService.triggerAlarm();
+          useLoadGuardStore.getState().setSystemStatus({ buzzerActive: true });
+        }
         toast.error('OVERLOAD DETECTED!', {
           description: `Excess weight: +${saved.excessWeight.toLocaleString()} kg · ${saved.ticketNumber}`,
         });
@@ -110,7 +123,14 @@ export default function WeighingPage() {
     } finally {
       setIsCapturing(false);
     }
-  }, [selectedVehicle, weight, passengerCount, addMeasurement, operatorName]);
+  }, [
+    selectedVehicle,
+    weight,
+    passengerCount,
+    addMeasurement,
+    operatorName,
+    settings.alarmEnabled,
+  ]);
 
   const handleReset = () => {
     resetWeight();
@@ -120,13 +140,7 @@ export default function WeighingPage() {
     toast.info('Scale reset');
   };
 
-  const handlePrint = () => {
-    toast.info('Printing ticket...', { description: 'Ticket sent to printer' });
-  };
-
-  const handleDownload = () => {
-    toast.info('Generating PDF...', { description: 'Download will start shortly' });
-  };
+  const vehicleOnScale = selectedVehicle && capturedWeight === null;
 
   return (
     <div className="space-y-6">
@@ -137,7 +151,7 @@ export default function WeighingPage() {
             Live Weighing Station
           </h1>
           <p className="text-muted-foreground">
-            Vehicles from database · live weight simulated until scale hardware is connected
+            Select vehicle on scale · simulation ramps until stable · capture to save
           </p>
         </div>
         <SystemStatusPanel
@@ -147,11 +161,25 @@ export default function WeighingPage() {
         />
       </div>
 
+      {vehicleOnScale && (
+        <Alert className="border-primary/30 bg-primary/5">
+          <Truck className="h-4 w-4" />
+          <AlertTitle>Vehicle on scale</AlertTitle>
+          <AlertDescription>
+            {selectedVehicle.plateNumber} ({getBusTypeLabel(selectedVehicle.vehicleType)}) —{' '}
+            {weight.stable
+              ? 'Weight is stable. You can capture now.'
+              : 'Waiting for weight to stabilize…'}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Vehicle Selection</CardTitle>
+              <CardDescription>Choose the vehicle currently on the digital scale</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -160,7 +188,7 @@ export default function WeighingPage() {
                   onValueChange={handleVehicleSelect}
                 >
                   <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select a vehicle..." />
+                    <SelectValue placeholder="Select a vehicle on scale..." />
                   </SelectTrigger>
                   <SelectContent>
                     {availableVehicles.length === 0 ? (
@@ -216,7 +244,9 @@ export default function WeighingPage() {
             <CardHeader className="bg-secondary/30 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className={`h-3 w-3 rounded-full ${systemStatus.sensorOnline ? 'bg-success animate-pulse' : 'bg-destructive'}`} />
+                  <div
+                    className={`h-3 w-3 rounded-full ${systemStatus.sensorOnline ? 'bg-success animate-pulse' : 'bg-destructive'}`}
+                  />
                   <CardTitle className="text-lg">Digital Scale</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
@@ -237,7 +267,7 @@ export default function WeighingPage() {
                   trend={capturedWeight !== null ? 'stable' : weight.trend}
                   size="xl"
                 />
-                
+
                 {capturedWeight !== null && (
                   <Badge variant="outline" className="text-lg px-4 py-1">
                     <CheckCircle2 className="h-4 w-4 mr-2 text-success" />
@@ -262,7 +292,7 @@ export default function WeighingPage() {
                   size="lg"
                   className="h-16 text-lg gap-2"
                   onClick={handleCapture}
-                  disabled={!selectedVehicle || isCapturing || !weight.stable}
+                  disabled={!selectedVehicle || isCapturing || !weight.stable || capturedWeight !== null}
                 >
                   {isCapturing ? (
                     <>
@@ -276,7 +306,7 @@ export default function WeighingPage() {
                     </>
                   )}
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="lg"
@@ -286,7 +316,7 @@ export default function WeighingPage() {
                   <RotateCcw className="h-5 w-5" />
                   Reset
                 </Button>
-                
+
                 <Button
                   variant={systemStatus.buzzerActive ? 'destructive' : 'outline'}
                   size="lg"
@@ -305,10 +335,12 @@ export default function WeighingPage() {
                     </>
                   )}
                 </Button>
-                
+
                 <div className="flex items-center justify-center rounded-lg border bg-card">
                   <div className="text-center">
-                    <Wifi className={`h-6 w-6 mx-auto ${systemStatus.sensorOnline ? 'text-success' : 'text-destructive'}`} />
+                    <Wifi
+                      className={`h-6 w-6 mx-auto ${systemStatus.sensorOnline ? 'text-success' : 'text-destructive'}`}
+                    />
                     <p className="text-xs mt-1 text-muted-foreground">
                       {systemStatus.sensorOnline ? 'Connected' : 'Disconnected'}
                     </p>
@@ -330,26 +362,44 @@ export default function WeighingPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Printer className="h-5 w-5" />
-                Ticket Preview
+                Last Ticket
               </CardTitle>
               <CardDescription>
-                {lastMeasurement 
-                  ? 'Generated ticket for last measurement'
+                {lastMeasurement
+                  ? 'Click to reopen full receipt'
                   : 'Capture weight to generate ticket'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TicketPreview
-                measurement={lastMeasurement || undefined}
-                vehicle={selectedVehicle || undefined}
-                liveWeight={capturedWeight ?? weight.value}
-                onPrint={handlePrint}
-                onDownload={handleDownload}
-              />
+              {lastMeasurement ? (
+                <button
+                  type="button"
+                  className="w-full text-left rounded-lg transition-opacity hover:opacity-90"
+                  onClick={() => setReceiptOpen(true)}
+                >
+                  <TicketPreview
+                    measurement={lastMeasurement}
+                    vehicle={selectedVehicle || undefined}
+                    liveWeight={capturedWeight ?? weight.value}
+                  />
+                </button>
+              ) : (
+                <TicketPreview
+                  vehicle={selectedVehicle || undefined}
+                  liveWeight={weight.value}
+                />
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <TicketReceiptDialog
+        open={receiptOpen}
+        onOpenChange={setReceiptOpen}
+        measurement={lastMeasurement}
+        vehicle={selectedVehicle}
+      />
     </div>
   );
 }

@@ -34,6 +34,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { WeightStatusBadge } from '@/components/industrial/weight-status';
+import { TicketReceiptDialog } from '@/components/industrial/ticket-receipt-dialog';
 import { useLoadGuardStore } from '@/store/loadguard-store';
 import { measurementApi } from '@/services/api';
 import { normalizeMeasurement } from '@/lib/api-normalize';
@@ -49,6 +50,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import type { Measurement } from '@/types';
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -83,6 +85,8 @@ export default function HistoryPage() {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null);
+  const [selectedMeasurement, setSelectedMeasurement] = useState<Measurement | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const itemsPerPage = 10;
 
   const filteredMeasurements = useMemo(() => {
@@ -134,6 +138,11 @@ export default function HistoryPage() {
     } finally {
       setExporting(null);
     }
+  };
+
+  const handleRowClick = (measurement: Measurement) => {
+    setSelectedMeasurement(measurement);
+    setReceiptOpen(true);
   };
 
   return (
@@ -296,7 +305,11 @@ export default function HistoryPage() {
                   </TableRow>
                 ) : (
                   paginatedMeasurements.map((m) => (
-                    <TableRow key={m.id}>
+                    <TableRow
+                      key={m.id}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => handleRowClick(m)}
+                    >
                       <TableCell className="font-mono text-sm">{m.ticketNumber}</TableCell>
                       <TableCell className="text-sm">
                         <div>{format(new Date(m.timestamp), 'PP')}</div>
@@ -372,6 +385,13 @@ export default function HistoryPage() {
           )}
         </CardContent>
       </Card>
+
+      <TicketReceiptDialog
+        open={receiptOpen}
+        onOpenChange={setReceiptOpen}
+        measurement={selectedMeasurement}
+        vehicle={selectedMeasurement?.vehicle}
+      />
     </div>
   );
 }

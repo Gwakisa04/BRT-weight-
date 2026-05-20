@@ -28,8 +28,8 @@ export function SensorStatusBadge({
   };
 
   const labels = {
-    sensor: status ? 'Sensor Online' : 'Sensor Offline',
-    backend: status ? 'Backend Connected' : 'Backend Disconnected',
+    sensor: status ? 'Database Live' : 'Database Offline',
+    backend: status ? 'Backend Live' : 'Backend Offline',
     buzzer: status ? 'Buzzer Active' : 'Buzzer Inactive',
     generic: status ? 'Online' : 'Offline',
   };

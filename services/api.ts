@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Vehicle, Measurement, SystemSettings, DailyStats } from '@/types';
+import type { Vehicle, Measurement, SystemSettings, DailyStats, DashboardSummary, DashboardPeriod } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -125,6 +125,8 @@ export type WeeklyChartPoint = {
 export const reportsApi = {
   getDailyStats: (date?: string) =>
     api.get<DailyStats>(`/reports/daily${date ? `?date=${date}` : ''}`),
+  getSummary: (period: DashboardPeriod = 'today') =>
+    api.get<DashboardSummary>(`/reports/summary?period=${period}`),
   getWeeklyStats: () => api.get<WeeklyChartPoint[]>('/reports/weekly'),
   getMonthlyStats: () => api.get('/reports/monthly'),
   getOverloadTrends: (days?: number) => 

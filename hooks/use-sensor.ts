@@ -12,14 +12,17 @@ export function useLiveWeight() {
   );
   const setLiveWeight = useLoadGuardStore((s) => s.setLiveWeight);
 
+  const bumpScaleSession = useLoadGuardStore((s) => s.bumpScaleSession);
+
   const resetWeight = useCallback(() => {
+    bumpScaleSession();
     setLiveWeight({
       value: 0,
-      stable: true,
+      stable: false,
       trend: 'stable',
       timestamp: new Date(),
     });
-  }, [setLiveWeight]);
+  }, [setLiveWeight, bumpScaleSession]);
 
   const getStatus = useCallback(() => {
     if (!selectedVehicle) return 'SAFE' as const;

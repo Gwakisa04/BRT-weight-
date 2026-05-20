@@ -17,6 +17,8 @@ interface TicketPreviewProps {
   className?: string;
   onPrint?: () => void;
   onDownload?: () => void;
+  printing?: boolean;
+  downloading?: boolean;
 }
 
 export function TicketPreview({
@@ -27,6 +29,8 @@ export function TicketPreview({
   className,
   onPrint,
   onDownload,
+  printing = false,
+  downloading = false,
 }: TicketPreviewProps) {
   const now = new Date();
   const ticketNumber = measurement?.ticketNumber || `TKT-${format(now, 'yyyyMMdd')}-${Math.floor(Math.random() * 9999).toString().padStart(4, '0')}`;
@@ -95,7 +99,7 @@ export function TicketPreview({
             <span className="font-mono font-bold text-lg">{measuredWeight.toLocaleString()} kg</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Allowed Weight:</span>
+            <span className="text-sm text-muted-foreground">Max Allowed Weight:</span>
             <span className="font-mono">{allowedWeight.toLocaleString()} kg</span>
           </div>
           <div className="flex justify-between items-center">
@@ -130,14 +134,14 @@ export function TicketPreview({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={onPrint}>
+        <div className="flex gap-2 ticket-print-hide">
+          <Button variant="outline" className="flex-1" onClick={onPrint} disabled={printing || !onPrint}>
             <Printer className="h-4 w-4 mr-2" />
-            Print
+            {printing ? 'Printing…' : 'Print'}
           </Button>
-          <Button variant="outline" className="flex-1" onClick={onDownload}>
+          <Button variant="outline" className="flex-1" onClick={onDownload} disabled={downloading || !onDownload}>
             <Download className="h-4 w-4 mr-2" />
-            PDF
+            {downloading ? 'Downloading…' : 'PDF'}
           </Button>
         </div>
       </CardContent>

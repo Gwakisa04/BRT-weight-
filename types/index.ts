@@ -96,6 +96,17 @@ export interface DailyStats {
   totalMeasurements: number;
 }
 
+export type DashboardPeriod = 'all' | 'today' | 'week';
+
+export interface DashboardSummary {
+  period: DashboardPeriod;
+  totalVehiclesInFleet: number;
+  safeWeighings: number;
+  overloadWeighings: number;
+  underloadWeighings: number;
+  totalWeighings: number;
+}
+
 export interface WeightThreshold {
   warningPercentage: number;
   overloadPercentage: number;

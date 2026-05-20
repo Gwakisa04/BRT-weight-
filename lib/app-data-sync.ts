@@ -5,13 +5,13 @@ import type { DailyStats, Measurement, Vehicle } from '@/types';
 
 const FULL_SYNC_MS = 60_000;
 const VEHICLES_SYNC_MS = 5_000;
+const HEALTH_POLL_MS = 10_000;
 const MIN_GAP_MS = 1_500;
 
 let lastFullSync = 0;
 let lastVehiclesSync = 0;
 let fullInFlight: Promise<void> | null = null;
 let vehiclesInFlight: Promise<void> | null = null;
-let healthChecked = false;
 
 function vehiclesUnchanged(prev: Vehicle[], next: Vehicle[]): boolean {
   if (prev.length !== next.length) return false;
@@ -38,24 +38,29 @@ function measurementsUnchanged(prev: Measurement[], next: Measurement[]): boolea
   return prev[0]?.id === next[0]?.id && prev[prev.length - 1]?.id === next[next.length - 1]?.id;
 }
 
-async function checkHealthOnce(): Promise<boolean> {
-  const base = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api').replace(
-    /\/api\/?$/,
-    ''
-  );
+function healthBaseUrl(): string {
+  return (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api').replace(/\/api\/?$/, '');
+}
+
+/** Poll backend health — backend live when HTTP 200; sensor/DB when database connected. */
+export async function pollBackendHealth(): Promise<boolean> {
   try {
-    const res = await fetch(`${base}/health`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`${healthBaseUrl()}/health`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
+    });
     const data = res.ok ? await res.json() : null;
     const dbOk = data?.database === 'connected';
     useLoadGuardStore.getState().setSystemStatus({
       backendConnected: res.ok,
       sensorOnline: dbOk ?? false,
     });
-    healthChecked = true;
-    return dbOk ?? false;
+    return res.ok;
   } catch {
-    useLoadGuardStore.getState().setSystemStatus({ backendConnected: false, sensorOnline: false });
-    healthChecked = true;
+    useLoadGuardStore.getState().setSystemStatus({
+      backendConnected: false,
+      sensorOnline: false,
+    });
     return false;
   }
 }
@@ -67,10 +72,8 @@ export async function syncVehiclesOnly(force = false): Promise<void> {
   if (vehiclesInFlight) return vehiclesInFlight;
 
   vehiclesInFlight = (async () => {
-    if (!healthChecked) {
-      const ok = await checkHealthOnce();
-      if (!ok) return;
-    }
+    const backendOk = await pollBackendHealth();
+    if (!backendOk) return;
 
     const { data } = await vehicleApi.getAll();
     const vehicles = data.map(normalizeVehicle);
@@ -80,7 +83,10 @@ export async function syncVehiclesOnly(force = false): Promise<void> {
       setVehicles(vehicles);
     }
 
-    setGpsSync({ lastSyncAt: new Date(), vehiclesWithLocation: vehicles.filter((v) => v.currentLocation).length });
+    setGpsSync({
+      lastSyncAt: new Date(),
+      vehiclesWithLocation: vehicles.filter((v) => v.currentLocation).length,
+    });
     lastVehiclesSync = Date.now();
   })().finally(() => {
     vehiclesInFlight = null;
@@ -96,13 +102,14 @@ export async function syncAppDataFull(force = false): Promise<void> {
   if (fullInFlight) return fullInFlight;
 
   fullInFlight = (async () => {
-    const dbOk = healthChecked ? useLoadGuardStore.getState().systemStatus.backendConnected : await checkHealthOnce();
-    if (!dbOk) return;
+    const backendOk = await pollBackendHealth();
+    if (!backendOk) return;
 
-    const [vehiclesRes, measurementsRes, dailyRes] = await Promise.all([
+    const [vehiclesRes, measurementsRes, dailyRes, summaryRes] = await Promise.all([
       vehicleApi.getAll(),
       measurementApi.getRecent(25),
       reportsApi.getDailyStats(),
+      reportsApi.getSummary('today'),
     ]);
 
     const vehicles = vehiclesRes.data.map(normalizeVehicle);
@@ -117,6 +124,7 @@ export async function syncAppDataFull(force = false): Promise<void> {
       state.setMeasurements(measurements);
     }
     state.updateDailyStats(stats);
+    state.setDashboardSummary(summaryRes.data);
 
     const current = state.selectedVehicle;
     if (!current && vehicles.length > 0) {
@@ -140,5 +148,5 @@ export function shouldRunVehiclePoll(pathname: string): boolean {
 }
 
 export function getSyncIntervals() {
-  return { fullSyncMs: FULL_SYNC_MS, vehiclesSyncMs: VEHICLES_SYNC_MS };
+  return { fullSyncMs: FULL_SYNC_MS, vehiclesSyncMs: VEHICLES_SYNC_MS, healthPollMs: HEALTH_POLL_MS };
 }

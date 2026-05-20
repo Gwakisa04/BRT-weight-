@@ -27,7 +27,6 @@ export function TopNavbar({ className }: TopNavbarProps) {
   const setTheme = useLoadGuardStore((s) => s.setTheme);
   const toggleSidebar = useLoadGuardStore((s) => s.toggleSidebar);
   const sidebarOpen = useLoadGuardStore((s) => s.sidebarOpen);
-  const sensorOnline = useLoadGuardStore((s) => s.systemStatus.sensorOnline);
   const backendConnected = useLoadGuardStore((s) => s.systemStatus.backendConnected);
   const buzzerActive = useLoadGuardStore((s) => s.systemStatus.buzzerActive);
 
@@ -68,19 +67,17 @@ export function TopNavbar({ className }: TopNavbarProps) {
         {/* Connection Status */}
         <div className={cn(
           'hidden sm:flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm',
-          sensorOnline && backendConnected
+          backendConnected
             ? 'border-success/30 bg-success/10 text-success'
             : 'border-destructive/30 bg-destructive/10 text-destructive'
         )}>
-          {sensorOnline && backendConnected ? (
+          {backendConnected ? (
             <Wifi className="h-4 w-4" />
           ) : (
             <WifiOff className="h-4 w-4" />
           )}
           <span className="hidden md:inline">
-            {sensorOnline && backendConnected
-              ? 'System Online'
-              : 'Connection Issue'}
+            {backendConnected ? 'Backend Live' : 'Backend Offline'}
           </span>
         </div>
 

@@ -213,3 +213,25 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
 }
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #ticket-print-root,
+  #ticket-print-root * {
+    visibility: visible !important;
+  }
+
+  #ticket-print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  .ticket-print-hide {
+    display: none !important;
+  }
+}

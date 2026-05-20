@@ -7,6 +7,7 @@ import type {
   LiveWeight,
   SystemSettings,
   DailyStats,
+  DashboardSummary,
   GpsSyncState,
 } from '@/types';
 
@@ -25,6 +26,10 @@ interface LoadGuardState {
   
   // Stats
   dailyStats: DailyStats;
+  dashboardSummary: DashboardSummary | null;
+
+  // Scale simulation session (increment to restart ramp)
+  scaleSessionKey: number;
   
   // Settings
   settings: SystemSettings;
@@ -52,6 +57,8 @@ interface LoadGuardState {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   updateDailyStats: (stats: Partial<DailyStats>) => void;
+  setDashboardSummary: (summary: DashboardSummary | null) => void;
+  bumpScaleSession: () => void;
   setGpsSync: (sync: Partial<GpsSyncState>) => void;
 }
 
@@ -72,8 +79,8 @@ const initialSettings: SystemSettings = {
 };
 
 const initialSystemStatus: SystemStatus = {
-  sensorOnline: true,
-  backendConnected: true,
+  sensorOnline: false,
+  backendConnected: false,
   buzzerActive: false,
   lastUpdate: new Date(),
 };
@@ -114,6 +121,8 @@ export const useLoadGuardStore = create<LoadGuardState>()(
       measurements: [],
       recentMeasurements: [],
       dailyStats: initialDailyStats,
+      dashboardSummary: null,
+      scaleSessionKey: 0,
       gpsSync: initialGpsSync,
       settings: initialSettings,
       theme: 'dark',
@@ -177,6 +186,11 @@ export const useLoadGuardStore = create<LoadGuardState>()(
         set((state) => ({
           dailyStats: { ...state.dailyStats, ...stats },
         })),
+
+      setDashboardSummary: (summary) => set({ dashboardSummary: summary }),
+
+      bumpScaleSession: () =>
+        set((state) => ({ scaleSessionKey: state.scaleSessionKey + 1 })),
 
       setGpsSync: (sync) =>
         set((state) => ({

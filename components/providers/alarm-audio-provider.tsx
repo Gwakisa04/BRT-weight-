@@ -55,7 +55,7 @@ export function AlarmAudioProvider({ children }: { children: React.ReactNode }) 
     const isOverload = liveWeight.value > allowed;
     const isStableOverload = isOverload && liveWeight.stable;
 
-    if (isStableOverload && !overloadAlarmFiredRef.current) {
+    if (isStableOverload && !overloadAlarmFiredRef.current && !buzzerActive) {
       overloadAlarmFiredRef.current = true;
       setSystemStatus({ buzzerActive: true });
       socketService.triggerAlarm();
@@ -63,8 +63,10 @@ export function AlarmAudioProvider({ children }: { children: React.ReactNode }) 
   }, [
     liveWeight.value,
     liveWeight.stable,
-    selectedVehicle,
+    selectedVehicle?.id,
+    selectedVehicle?.allowedWeight,
     settings.alarmEnabled,
+    buzzerActive,
     setSystemStatus,
   ]);
 

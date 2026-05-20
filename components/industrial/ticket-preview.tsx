@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
 import { cn } from '@/lib/utils';
-import { getBusTypeLabel } from '@/lib/dart-bus-types';
 import type { Measurement, Vehicle, WeightStatus } from '@/types';
 import { format } from 'date-fns';
 import { Printer, Download } from 'lucide-react';
@@ -15,6 +14,7 @@ interface TicketPreviewProps {
   liveWeight?: number;
   operator?: string;
   className?: string;
+  variant?: 'full' | 'compact';
   onPrint?: () => void;
   onDownload?: () => void;
   printing?: boolean;
@@ -29,8 +29,8 @@ const STATUS_LABELS: Record<WeightStatus, string> = {
 
 function ReceiptLogo() {
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground">
-      <svg viewBox="0 0 16 16" className="h-5 w-5 text-background" aria-hidden>
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
+      <svg viewBox="0 0 16 16" className="h-5 w-5 text-primary-foreground" aria-hidden>
         {[0, 1, 2].map((row) =>
           [0, 1, 2].map((col) => (
             <circle
@@ -49,10 +49,10 @@ function ReceiptLogo() {
 
 function DashedRule() {
   return (
-    <div className="relative my-5 flex items-center">
-      <div className="h-3 w-3 shrink-0 rounded-full border border-border bg-background -ml-1" />
+    <div className="relative my-4 flex items-center">
+      <div className="h-3 w-3 shrink-0 rounded-full border border-border bg-card -ml-1" />
       <div className="mx-2 h-px flex-1 border-t border-dashed border-border" />
-      <div className="h-3 w-3 shrink-0 rounded-full border border-border bg-background -mr-1" />
+      <div className="h-3 w-3 shrink-0 rounded-full border border-border bg-card -mr-1" />
     </div>
   );
 }
@@ -63,198 +63,191 @@ export function TicketPreview({
   liveWeight,
   operator = 'System',
   className,
+  variant = 'full',
   onPrint,
   onDownload,
   printing = false,
   downloading = false,
 }: TicketPreviewProps) {
-  const now = new Date();
-  const ticketNumber =
-    measurement?.ticketNumber ||
-    `TKT-${format(now, 'yyyyMMdd')}-${Math.floor(Math.random() * 9999)
-      .toString()
-      .padStart(4, '0')}`;
+  const isCompact = variant === 'compact';
+  const timestamp = measurement?.timestamp ?? new Date();
+
+  const ticketNumber = useMemo(() => {
+    if (measurement?.ticketNumber) return measurement.ticketNumber;
+    return `TKT-${format(timestamp, 'yyyyMMdd')}-PREVIEW`;
+  }, [measurement?.ticketNumber, timestamp]);
 
   const measuredWeight = measurement?.measuredWeight ?? liveWeight ?? 0;
   const allowedWeight = measurement?.allowedWeight ?? vehicle?.allowedWeight ?? 0;
   const excessWeight = measurement?.excessWeight ?? measuredWeight - allowedWeight;
-  const timestamp = measurement?.timestamp ?? now;
 
-  const getStatus = (): WeightStatus => {
+  const status = useMemo((): WeightStatus => {
+    if (measurement?.status) return measurement.status;
     if (!allowedWeight) return 'SAFE';
     const percentage = (measuredWeight / allowedWeight) * 100;
     if (percentage > 100) return 'OVERLOAD';
     if (percentage < 50) return 'UNDERLOAD';
     return 'SAFE';
-  };
+  }, [measurement?.status, measuredWeight, allowedWeight]);
 
-  const status = measurement?.status ?? getStatus();
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
+  // Only generate QR for saved measurements — avoids heavy work on live weight ticks
   useEffect(() => {
+    if (!measurement?.id || isCompact) {
+      setQrDataUrl('');
+      return;
+    }
+
+    let cancelled = false;
     const payload = JSON.stringify({
       ticket: ticketNumber,
-      id: measurement?.id,
-      plate: vehicle?.plateNumber,
+      id: measurement.id,
+      plate: vehicle?.plateNumber ?? measurement.vehicle?.plateNumber,
       weight: measuredWeight,
       status,
     });
-    QRCode.toDataURL(payload, { margin: 1, width: 120, color: { dark: '#171717', light: '#ffffff' } })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(''));
-  }, [ticketNumber, measurement?.id, vehicle?.plateNumber, measuredWeight, status]);
+
+    QRCode.toDataURL(payload, {
+      margin: 1,
+      width: 120,
+      color: { dark: '#171717', light: '#ffffff' },
+    })
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setQrDataUrl('');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [measurement?.id, ticketNumber, vehicle?.plateNumber, measurement?.vehicle?.plateNumber, measuredWeight, status, isCompact]);
 
   const statusTone =
     status === 'OVERLOAD'
-      ? 'text-red-600'
+      ? 'text-destructive'
       : status === 'UNDERLOAD'
-        ? 'text-amber-600'
-        : 'text-emerald-600';
+        ? 'text-amber-500'
+        : 'text-emerald-500';
 
   return (
-    <div className={cn('mx-auto w-full max-w-md', className)}>
-      <div className="receipt-slip overflow-hidden rounded-2xl border border-border/80 bg-[#f7f7f7] shadow-sm">
-        <div className="bg-white px-6 pb-6 pt-5">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
+    <div className={cn('mx-auto w-full', isCompact ? 'max-w-full' : 'max-w-md', className)}>
+      <div
+        className={cn(
+          'receipt-slip overflow-hidden rounded-xl border border-border shadow-sm',
+          'bg-muted/30 print:bg-[#f7f7f7] print:text-black'
+        )}
+      >
+        <div className={cn('bg-card px-4 pb-4 pt-4 print:bg-white', isCompact ? 'text-sm' : 'px-6 pb-6 pt-5')}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
               <ReceiptLogo />
-              <div>
-                <p className="text-base font-bold tracking-tight text-foreground">BRT Weight System</p>
+              <div className="min-w-0">
+                <p className="font-bold tracking-tight text-foreground truncate">BRT Weight System</p>
                 <p className="text-xs text-muted-foreground">Vehicle Weighing Station</p>
               </div>
             </div>
-            <div className="text-right text-xs text-muted-foreground">
-              <p className="font-medium text-foreground">Receipt N° {ticketNumber.split('-').pop()}</p>
+            <div className="shrink-0 text-right text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">N° {ticketNumber.split('-').pop()}</p>
               <p>{format(timestamp, 'dd.MM.yyyy')}</p>
               <p>{format(timestamp, 'HH:mm')}</p>
             </div>
           </div>
 
-          <div className="mt-5">
-            <h2 className="text-xl font-bold leading-tight text-foreground">
-              Weighing completed successfully!
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Ticket{' '}
-              <span className="font-semibold text-primary">{ticketNumber}</span> has been recorded in
-              the system.
-            </p>
-          </div>
-
-          <DashedRule />
-
-          {/* Line items */}
-          <div className="space-y-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex gap-3">
-                <span className="text-sm font-medium text-muted-foreground">1</span>
-                <div>
-                  <p className="font-semibold text-foreground">Vehicle on scale</p>
-                  <p className="mt-0.5 text-sm text-muted-foreground">
-                    {vehicle?.plateNumber ?? 'N/A'} · {vehicle?.driver ?? 'N/A'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {vehicle?.company ?? 'N/A'}
-                    {vehicle?.vehicleType ? ` · ${getBusTypeLabel(vehicle.vehicleType)}` : ''}
-                  </p>
-                </div>
+          {!isCompact && (
+            <>
+              <div className="mt-4">
+                <h2 className="text-lg font-bold leading-tight text-foreground">
+                  Weighing completed successfully!
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Ticket <span className="font-semibold text-primary">{ticketNumber}</span> recorded.
+                </p>
               </div>
-              <p className="shrink-0 text-sm font-bold tabular-nums text-foreground">
-                {allowedWeight.toLocaleString()} kg
-              </p>
-            </div>
+              <DashedRule />
+            </>
+          )}
 
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex gap-3">
-                <span className="text-sm font-medium text-muted-foreground">2</span>
-                <div>
-                  <p className="font-semibold text-foreground">Weight measurement</p>
-                  <p className="mt-0.5 text-sm text-muted-foreground">
-                    Captured at {format(timestamp, 'HH:mm:ss')}
-                  </p>
-                  {measurement?.measuredPassengers != null && (
-                    <p className="text-xs text-muted-foreground">
-                      Passengers: {measurement.measuredPassengers}
-                      {measurement.maxPassengers != null
-                        ? ` / ${measurement.maxPassengers} max`
-                        : ''}
-                    </p>
-                  )}
-                </div>
+          <div className={cn('space-y-3', isCompact && 'mt-3')}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-foreground">{vehicle?.plateNumber ?? 'N/A'}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {vehicle?.driver ?? 'N/A'} · {vehicle?.company ?? 'N/A'}
+                </p>
               </div>
-              <p className="shrink-0 text-sm font-bold tabular-nums text-foreground">
-                {measuredWeight.toLocaleString()} kg
-              </p>
+              {!isCompact && (
+                <p className="shrink-0 text-sm font-bold tabular-nums text-foreground">
+                  {allowedWeight.toLocaleString()} kg
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Summary box */}
-          <div className="mt-6 rounded-xl bg-[#efefef] px-5 py-4">
-            <div className="flex items-end justify-between gap-4">
-              <p className="text-lg font-bold text-foreground">Captured weight</p>
-              <p className="text-2xl font-bold tabular-nums tracking-tight text-foreground">
-                {measuredWeight.toLocaleString()}{' '}
-                <span className="text-base font-semibold">kg</span>
+          <div className="mt-4 rounded-lg bg-muted/80 px-4 py-3 print:bg-[#efefef]">
+            <div className="flex items-end justify-between gap-3">
+              <p className={cn('font-bold text-foreground', isCompact ? 'text-sm' : 'text-base')}>
+                Captured weight
+              </p>
+              <p className={cn('font-bold tabular-nums text-foreground', isCompact ? 'text-lg' : 'text-2xl')}>
+                {measuredWeight.toLocaleString()} <span className="text-sm font-semibold">kg</span>
               </p>
             </div>
-            <div className="mt-3 space-y-1.5 border-t border-black/5 pt-3 text-sm">
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Max allowed weight</span>
-                <span className="font-medium tabular-nums">{allowedWeight.toLocaleString()} kg</span>
+            <div className="mt-2 space-y-1 border-t border-border/60 pt-2 text-xs sm:text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Max allowed</span>
+                <span className="font-medium tabular-nums text-foreground">
+                  {allowedWeight.toLocaleString()} kg
+                </span>
               </div>
-              <div className="flex justify-between gap-4">
+              <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Difference</span>
                 <span
                   className={cn(
                     'font-semibold tabular-nums',
-                    excessWeight > 0 ? 'text-red-600' : 'text-emerald-600'
+                    excessWeight > 0 ? 'text-destructive' : 'text-emerald-500'
                   )}
                 >
                   {excessWeight > 0 ? '+' : ''}
                   {excessWeight.toLocaleString()} kg
                 </span>
               </div>
-              <div className="flex justify-between gap-4">
+              <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Status</span>
                 <span className={cn('font-semibold', statusTone)}>{STATUS_LABELS[status]}</span>
               </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Operator</span>
-                <span className="font-medium">{measurement?.operator ?? operator}</span>
-              </div>
+              {!isCompact && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Operator</span>
+                  <span className="font-medium text-foreground">{measurement?.operator ?? operator}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* QR + note */}
-          <div className="mt-5 flex items-center justify-between gap-4 border-t border-border/60 pt-5">
-            <p className="max-w-[55%] text-sm font-semibold leading-snug text-foreground">
-              Scan QR code to verify this weighing record in the system history.
-            </p>
-            {qrDataUrl ? (
-              <img
-                src={qrDataUrl}
-                alt={`QR code for ticket ${ticketNumber}`}
-                className="h-[88px] w-[88px] rounded-lg border border-primary/20 bg-white p-1"
-              />
-            ) : (
-              <div className="h-[88px] w-[88px] rounded-lg border border-dashed border-muted bg-muted/30" />
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="mt-5 flex items-end justify-between gap-4 text-[10px] leading-relaxed text-muted-foreground">
-            <div>
-              <p className="font-medium text-foreground/80">BRT Weight · LoadGuard</p>
-              <p>Official vehicle weighing receipt</p>
+          {!isCompact && measurement?.id && (
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-4">
+              <p className="max-w-[55%] text-xs font-medium leading-snug text-muted-foreground">
+                Scan QR to verify in history.
+              </p>
+              {qrDataUrl ? (
+                <img
+                  src={qrDataUrl}
+                  alt={`QR for ${ticketNumber}`}
+                  className="h-20 w-20 rounded-md border border-border bg-white p-1"
+                />
+              ) : (
+                <div className="h-20 w-20 rounded-md border border-dashed border-muted bg-muted/40" />
+              )}
             </div>
-            <p className="text-right">Verify at history / {ticketNumber}</p>
-          </div>
+          )}
         </div>
       </div>
 
       {(onPrint || onDownload) && (
-        <div className="mt-4 flex gap-2 ticket-print-hide">
+        <div className="mt-3 flex gap-2 ticket-print-hide">
           {onPrint && (
             <Button variant="outline" className="flex-1" onClick={onPrint} disabled={printing}>
               <Printer className="h-4 w-4 mr-2" />

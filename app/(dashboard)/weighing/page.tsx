@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,15 +41,25 @@ import {
   Printer,
   CheckCircle2,
   Truck,
+  Receipt,
 } from 'lucide-react';
 import type { Measurement } from '@/types';
 
 export default function WeighingPage() {
   const { weight, status, resetWeight } = useLiveWeight();
   const { status: systemStatus, toggleBuzzer } = useSystemStatus();
-  const { selectedVehicle, setSelectedVehicle, addMeasurement, vehicles, settings } =
-    useLoadGuardStore();
-  const bumpScaleSession = useLoadGuardStore((s) => s.bumpScaleSession);
+
+  const { selectedVehicle, vehicles, settings, setSelectedVehicle, addMeasurement, bumpScaleSession } =
+    useLoadGuardStore(
+      useShallow((s) => ({
+        selectedVehicle: s.selectedVehicle,
+        vehicles: s.vehicles,
+        settings: s.settings,
+        setSelectedVehicle: s.setSelectedVehicle,
+        addMeasurement: s.addMeasurement,
+        bumpScaleSession: s.bumpScaleSession,
+      }))
+    );
 
   const [capturedWeight, setCapturedWeight] = useState<number | null>(null);
   const [passengerCount, setPassengerCount] = useState<string>('');
@@ -56,14 +67,14 @@ export default function WeighingPage() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
 
-  const availableVehicles = vehicles;
   const operatorName =
     typeof window !== 'undefined'
       ? JSON.parse(localStorage.getItem('brt_user') ?? '{}')?.name ?? 'Operator'
       : 'Operator';
 
   const handleVehicleSelect = (vehicleId: string) => {
-    const vehicle = availableVehicles.find((v) => v.id === vehicleId);
+    if (vehicleId === '_none') return;
+    const vehicle = vehicles.find((v) => v.id === vehicleId);
     if (vehicle) {
       setSelectedVehicle(vehicle);
       setCapturedWeight(null);
@@ -102,7 +113,7 @@ export default function WeighingPage() {
       setCapturedWeight(measuredWeight);
       setLastMeasurement(saved);
       addMeasurement(saved);
-      await refreshBackendData();
+      void refreshBackendData();
       setReceiptOpen(true);
 
       if (saved.status === 'OVERLOAD') {
@@ -125,7 +136,8 @@ export default function WeighingPage() {
     }
   }, [
     selectedVehicle,
-    weight,
+    weight.stable,
+    weight.value,
     passengerCount,
     addMeasurement,
     operatorName,
@@ -137,21 +149,22 @@ export default function WeighingPage() {
     setCapturedWeight(null);
     setPassengerCount('');
     setLastMeasurement(null);
-    toast.info('Scale reset');
+    toast.info('Scale reset — select a vehicle to weigh again');
   };
 
   const vehicleOnScale = selectedVehicle && capturedWeight === null;
+  const ticketVehicle = lastMeasurement?.vehicle ?? selectedVehicle;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl flex items-center gap-2">
-            <Scale className="h-8 w-8 text-primary" />
+            <Scale className="h-8 w-8 text-primary shrink-0" />
             Live Weighing Station
           </h1>
-          <p className="text-muted-foreground">
-            Select vehicle on scale · simulation ramps until stable · capture to save
+          <p className="text-muted-foreground mt-1">
+            Select vehicle · wait for stable reading · capture to save
           </p>
         </div>
         <SystemStatusPanel
@@ -174,52 +187,51 @@ export default function WeighingPage() {
         </Alert>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+        <div className="space-y-5 min-w-0">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Vehicle Selection</CardTitle>
               <CardDescription>Choose the vehicle currently on the digital scale</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Select
-                  value={selectedVehicle?.id || ''}
-                  onValueChange={handleVehicleSelect}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select a vehicle on scale..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableVehicles.length === 0 ? (
-                      <SelectItem value="_none" disabled>
-                        No vehicles — start backend or add vehicles
-                      </SelectItem>
-                    ) : null}
-                    {availableVehicles.map((vehicle) => (
+            <CardContent className="space-y-4">
+              <Select
+                value={selectedVehicle?.id ?? ''}
+                onValueChange={handleVehicleSelect}
+                disabled={isCapturing}
+              >
+                <SelectTrigger className="w-full h-11">
+                  <SelectValue placeholder="Select a vehicle on scale..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {vehicles.length === 0 ? (
+                    <SelectItem value="_none" disabled>
+                      No vehicles — start backend or add vehicles
+                    </SelectItem>
+                  ) : (
+                    vehicles.map((vehicle) => (
                       <SelectItem key={vehicle.id} value={vehicle.id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold">{vehicle.plateNumber}</span>
-                          <span className="text-muted-foreground">-</span>
-                          <span>{vehicle.driver}</span>
-                          <Badge variant="outline" className="ml-2">
-                            {getBusTypeLabel(vehicle.vehicleType)}
-                          </Badge>
-                        </div>
+                        <span className="font-bold">{vehicle.plateNumber}</span>
+                        <span className="text-muted-foreground mx-1">·</span>
+                        <span>{vehicle.driver}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">
+                          {getBusTypeLabel(vehicle.vehicleType)}
+                        </span>
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+
               {selectedVehicle && (
-                <div className="mt-4 space-y-4">
+                <>
                   <VehicleInfoCard
                     vehicle={selectedVehicle}
                     measuredPassengers={
                       passengerCount.trim() ? parseInt(passengerCount, 10) : null
                     }
                   />
-                  <div className="space-y-2 max-w-xs">
+                  <div className="space-y-2 max-w-sm">
                     <Label htmlFor="passengerCount">Passengers on board (optional)</Label>
                     <Input
                       id="passengerCount"
@@ -229,38 +241,35 @@ export default function WeighingPage() {
                       placeholder={`Max ${selectedVehicle.maxPassengers}`}
                       value={passengerCount}
                       onChange={(e) => setPassengerCount(e.target.value)}
+                      disabled={isCapturing}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Manufacturer limit: {selectedVehicle.maxPassengers} passengers for this bus
-                      model
-                    </p>
                   </div>
-                </div>
+                </>
               )}
             </CardContent>
           </Card>
 
           <Card className="overflow-hidden">
-            <CardHeader className="bg-secondary/30 border-b">
-              <div className="flex items-center justify-between">
+            <CardHeader className="bg-secondary/30 border-b py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <div
-                    className={`h-3 w-3 rounded-full ${systemStatus.sensorOnline ? 'bg-success animate-pulse' : 'bg-destructive'}`}
+                    className={`h-2.5 w-2.5 rounded-full ${systemStatus.sensorOnline ? 'bg-success animate-pulse' : 'bg-destructive'}`}
                   />
                   <CardTitle className="text-lg">Digital Scale</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={weight.stable ? 'default' : 'secondary'}>
-                    {weight.stable ? 'Stable' : 'Reading...'}
+                    {weight.stable ? 'Stable' : 'Reading…'}
                   </Badge>
-                  <Badge variant="outline" className="font-mono">
-                    ESP32-001
-                  </Badge>
+                  {selectedVehicle && (
+                    <WeightStatusBadge status={status} size="sm" />
+                  )}
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-8">
-              <div className="text-center space-y-6">
+            <CardContent className="p-6 sm:p-8">
+              <div className="text-center space-y-5">
                 <LiveWeightDisplay
                   value={capturedWeight ?? weight.value}
                   stable={capturedWeight !== null || weight.stable}
@@ -269,7 +278,7 @@ export default function WeighingPage() {
                 />
 
                 {capturedWeight !== null && (
-                  <Badge variant="outline" className="text-lg px-4 py-1">
+                  <Badge variant="outline" className="text-base px-4 py-1">
                     <CheckCircle2 className="h-4 w-4 mr-2 text-success" />
                     Weight Captured
                   </Badge>
@@ -287,17 +296,19 @@ export default function WeighingPage() {
 
           <Card>
             <CardContent className="p-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <Button
                   size="lg"
-                  className="h-16 text-lg gap-2"
+                  className="h-14 sm:h-16 gap-2"
                   onClick={handleCapture}
-                  disabled={!selectedVehicle || isCapturing || !weight.stable || capturedWeight !== null}
+                  disabled={
+                    !selectedVehicle || isCapturing || !weight.stable || capturedWeight !== null
+                  }
                 >
                   {isCapturing ? (
                     <>
                       <Activity className="h-5 w-5 animate-spin" />
-                      Capturing...
+                      Saving…
                     </>
                   ) : (
                     <>
@@ -310,8 +321,9 @@ export default function WeighingPage() {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="h-16 text-lg gap-2"
+                  className="h-14 sm:h-16 gap-2"
                   onClick={handleReset}
+                  disabled={isCapturing}
                 >
                   <RotateCcw className="h-5 w-5" />
                   Reset
@@ -320,30 +332,28 @@ export default function WeighingPage() {
                 <Button
                   variant={systemStatus.buzzerActive ? 'destructive' : 'outline'}
                   size="lg"
-                  className="h-16 text-lg gap-2"
+                  className="h-14 sm:h-16 gap-2"
                   onClick={toggleBuzzer}
                 >
                   {systemStatus.buzzerActive ? (
                     <>
                       <VolumeX className="h-5 w-5" />
-                      Stop Alarm
+                      Stop
                     </>
                   ) : (
                     <>
                       <Volume2 className="h-5 w-5" />
-                      Test Alarm
+                      Test
                     </>
                   )}
                 </Button>
 
-                <div className="flex items-center justify-center rounded-lg border bg-card">
+                <div className="flex items-center justify-center rounded-lg border bg-card h-14 sm:h-16">
                   <div className="text-center">
                     <Wifi
-                      className={`h-6 w-6 mx-auto ${systemStatus.sensorOnline ? 'text-success' : 'text-destructive'}`}
+                      className={`h-5 w-5 mx-auto ${systemStatus.sensorOnline ? 'text-success' : 'text-destructive'}`}
                     />
-                    <p className="text-xs mt-1 text-muted-foreground">
-                      {systemStatus.sensorOnline ? 'Connected' : 'Disconnected'}
-                    </p>
+                    <p className="text-[10px] mt-0.5 text-muted-foreground">Sensor</p>
                   </div>
                 </div>
               </div>
@@ -357,37 +367,40 @@ export default function WeighingPage() {
           />
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Printer className="h-5 w-5" />
+        <div className="xl:sticky xl:top-20 xl:self-start">
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Printer className="h-4 w-4" />
                 Last Ticket
               </CardTitle>
               <CardDescription>
                 {lastMeasurement
-                  ? 'Click to reopen full receipt'
-                  : 'Capture weight to generate ticket'}
+                  ? 'Tap to open full receipt'
+                  : 'Capture a weight to generate a ticket'}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {lastMeasurement ? (
                 <button
                   type="button"
-                  className="w-full text-left rounded-lg transition-opacity hover:opacity-90"
+                  className="w-full text-left rounded-lg transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => setReceiptOpen(true)}
                 >
                   <TicketPreview
+                    variant="compact"
                     measurement={lastMeasurement}
-                    vehicle={selectedVehicle || undefined}
-                    liveWeight={capturedWeight ?? weight.value}
+                    vehicle={ticketVehicle ?? undefined}
                   />
                 </button>
               ) : (
-                <TicketPreview
-                  vehicle={selectedVehicle || undefined}
-                  liveWeight={weight.value}
-                />
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 py-10 px-4 text-center">
+                  <Receipt className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <p className="text-sm font-medium text-foreground">No ticket yet</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
+                    Select a vehicle, wait for a stable weight, then press Capture.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -398,7 +411,7 @@ export default function WeighingPage() {
         open={receiptOpen}
         onOpenChange={setReceiptOpen}
         measurement={lastMeasurement}
-        vehicle={selectedVehicle}
+        vehicle={ticketVehicle}
       />
     </div>
   );

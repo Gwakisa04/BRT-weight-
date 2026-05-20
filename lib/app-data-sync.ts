@@ -127,11 +127,11 @@ export async function syncAppDataFull(force = false): Promise<void> {
     state.setDashboardSummary(summaryRes.data);
 
     const current = state.selectedVehicle;
-    if (!current && vehicles.length > 0) {
-      state.setSelectedVehicle(vehicles[0]);
-    } else if (current) {
+    if (current) {
       const fresh = vehicles.find((v) => v.id === current.id);
-      if (fresh) state.setSelectedVehicle(fresh);
+      if (fresh && !vehiclesUnchanged([current], [fresh])) {
+        state.setSelectedVehicle(fresh);
+      }
     }
 
     lastFullSync = Date.now();

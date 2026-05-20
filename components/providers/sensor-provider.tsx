@@ -5,6 +5,8 @@ import { useLoadGuardStore } from '@/store/loadguard-store';
 import type { LiveWeight } from '@/types';
 import { isDemoOverloadVehicle } from '@/lib/alarm-sound';
 
+const TICK_MS = 350;
+
 /** Deterministic target weight ratio (85–110%) from vehicle id. */
 function targetRatioForVehicle(vehicleId: string, plateNumber?: string): number {
   if (isDemoOverloadVehicle(plateNumber)) {
@@ -17,6 +19,18 @@ function targetRatioForVehicle(vehicleId: string, plateNumber?: string): number 
   }
   const normalized = (Math.abs(hash) % 1000) / 1000;
   return 0.85 + normalized * 0.25;
+}
+
+function publishWeight(setLiveWeight: (w: LiveWeight) => void, next: LiveWeight) {
+  const prev = useLoadGuardStore.getState().liveWeight;
+  if (
+    prev.value === next.value &&
+    prev.stable === next.stable &&
+    prev.trend === next.trend
+  ) {
+    return;
+  }
+  setLiveWeight(next);
 }
 
 /** Single app-wide weight simulation — vehicle-aware ramp until stable. */
@@ -52,7 +66,7 @@ export function SensorProvider({ children }: { children: React.ReactNode }) {
         targetWeight = 0;
         currentWeight = 0;
         stableCounter = 0;
-        setLiveWeight({
+        publishWeight(setLiveWeight, {
           value: 0,
           stable: true,
           trend: 'stable',
@@ -76,9 +90,9 @@ export function SensorProvider({ children }: { children: React.ReactNode }) {
 
       let step: number;
       if (nearTarget) {
-        step = diff * 0.15 + (Math.random() - 0.5) * 8;
+        step = diff * 0.22 + (Math.random() - 0.5) * 8;
       } else {
-        step = Math.sign(diff) * (80 + Math.random() * 120) + (Math.random() - 0.5) * 30;
+        step = Math.sign(diff) * (110 + Math.random() * 140) + (Math.random() - 0.5) * 30;
       }
 
       currentWeight = Math.max(0, Math.min(50000, currentWeight + step));
@@ -89,13 +103,13 @@ export function SensorProvider({ children }: { children: React.ReactNode }) {
       const trend: LiveWeight['trend'] =
         step > 15 ? 'increasing' : step < -15 ? 'decreasing' : 'stable';
 
-      setLiveWeight({
+      publishWeight(setLiveWeight, {
         value: Math.round(currentWeight),
         stable: stableCounter > 3 && nearTarget,
         trend,
         timestamp: new Date(),
       });
-    }, 500);
+    }, TICK_MS);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);

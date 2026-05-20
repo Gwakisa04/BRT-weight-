@@ -213,7 +213,6 @@ export default function HistoryPage() {
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="SAFE">Safe</SelectItem>
                 <SelectItem value="OVERLOAD">Overload</SelectItem>
-                <SelectItem value="UNDERLOAD">Underload</SelectItem>
               </SelectContent>
             </Select>
 

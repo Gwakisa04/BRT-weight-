@@ -47,7 +47,8 @@ export function WeightStatusBadge({
     lg: 'h-5 w-5',
   };
 
-  const config = statusConfig[status];
+  const displayStatus = status === 'UNDERLOAD' ? 'SAFE' : status;
+  const config = statusConfig[displayStatus];
   const Icon = config.icon;
 
   return (
@@ -83,7 +84,6 @@ export function WeightComparison({
   
   const getStatus = (): WeightStatus => {
     if (percentage > 100) return 'OVERLOAD';
-    if (percentage < 50) return 'UNDERLOAD';
     return 'SAFE';
   };
 
@@ -101,19 +101,16 @@ export function WeightComparison({
         </div>
         
         <div className="text-center flex items-center justify-center">
-          <div className={cn(
-            'rounded-lg p-2',
-            status === 'OVERLOAD' && 'bg-destructive/10',
-            status === 'SAFE' && 'bg-success/10',
-            status === 'UNDERLOAD' && 'bg-warning/10',
-          )}>
+          <div
+            className={cn(
+              'rounded-lg p-2',
+              status === 'OVERLOAD' ? 'bg-destructive/10' : 'bg-success/10'
+            )}
+          >
             {status === 'OVERLOAD' ? (
               <AlertTriangle className="h-6 w-6 text-destructive" />
             ) : (
-              <Shield className={cn(
-                'h-6 w-6',
-                status === 'SAFE' ? 'text-success' : 'text-warning'
-              )} />
+              <Shield className="h-6 w-6 text-success" />
             )}
           </div>
         </div>

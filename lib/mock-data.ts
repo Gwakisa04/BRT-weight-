@@ -197,9 +197,8 @@ export const generateMockMeasurements = (count: number = 20): Measurement[] => {
     const measuredWeight = Math.round(vehicle.allowedWeight * (1 + variancePercent / 100));
     const excessWeight = measuredWeight - vehicle.allowedWeight;
     
-    let status: 'SAFE' | 'UNDERLOAD' | 'OVERLOAD' = 'SAFE';
+    let status: 'SAFE' | 'OVERLOAD' = 'SAFE';
     if (excessWeight > 0) status = 'OVERLOAD';
-    else if (measuredWeight < vehicle.allowedWeight * 0.5) status = 'UNDERLOAD';
     
     const timestamp = new Date();
     timestamp.setMinutes(timestamp.getMinutes() - i * 15);

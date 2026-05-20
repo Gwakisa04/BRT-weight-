@@ -28,7 +28,6 @@ export function useLiveWeight() {
     if (!selectedVehicle) return 'SAFE' as const;
     const percentage = (liveWeight.value / selectedVehicle.allowedWeight) * 100;
     if (percentage > 100) return 'OVERLOAD' as const;
-    if (percentage < 50) return 'UNDERLOAD' as const;
     return 'SAFE' as const;
   }, [liveWeight.value, selectedVehicle]);
 

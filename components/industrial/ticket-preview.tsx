@@ -86,9 +86,10 @@ export function TicketPreview({
     if (!allowedWeight) return 'SAFE';
     const percentage = (measuredWeight / allowedWeight) * 100;
     if (percentage > 100) return 'OVERLOAD';
-    if (percentage < 50) return 'UNDERLOAD';
     return 'SAFE';
   }, [measurement?.status, measuredWeight, allowedWeight]);
+
+  const displayStatus = status === 'UNDERLOAD' ? 'SAFE' : status;
 
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
@@ -125,12 +126,7 @@ export function TicketPreview({
     };
   }, [measurement?.id, ticketNumber, vehicle?.plateNumber, measurement?.vehicle?.plateNumber, measuredWeight, status, isCompact]);
 
-  const statusTone =
-    status === 'OVERLOAD'
-      ? 'text-destructive'
-      : status === 'UNDERLOAD'
-        ? 'text-amber-500'
-        : 'text-emerald-500';
+  const statusTone = displayStatus === 'OVERLOAD' ? 'text-destructive' : 'text-emerald-500';
 
   return (
     <div className={cn('mx-auto w-full', isCompact ? 'max-w-full' : 'max-w-md', className)}>
@@ -216,7 +212,7 @@ export function TicketPreview({
               </div>
               <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Status</span>
-                <span className={cn('font-semibold', statusTone)}>{STATUS_LABELS[status]}</span>
+                <span className={cn('font-semibold', statusTone)}>{STATUS_LABELS[displayStatus]}</span>
               </div>
               {!isCompact && (
                 <div className="flex justify-between gap-3">

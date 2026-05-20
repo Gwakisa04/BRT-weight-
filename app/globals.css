@@ -215,6 +215,15 @@
 }
 
 @media print {
+  @page {
+    margin: 12mm;
+    size: A5 portrait;
+  }
+
+  body {
+    background: white !important;
+  }
+
   body * {
     visibility: hidden !important;
   }
@@ -229,6 +238,19 @@
     left: 0;
     top: 0;
     width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  #ticket-print-root .receipt-slip {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+  }
+
+  #ticket-print-root .receipt-slip > div {
+    padding: 0 !important;
   }
 
   .ticket-print-hide {

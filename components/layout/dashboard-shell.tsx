@@ -10,6 +10,7 @@ import { SensorProvider } from '@/components/providers/sensor-provider';
 import { BackendDataProvider } from '@/components/providers/backend-data-provider';
 import { GpsTrackingProvider } from '@/components/providers/gps-tracking-provider';
 import { SystemSocketProvider } from '@/components/providers/system-socket-provider';
+import { AlarmAudioProvider } from '@/components/providers/alarm-audio-provider';
 import { AuthGuard } from '@/components/auth/auth-guard';
 import { useResponsiveSidebar } from '@/hooks/use-responsive-sidebar';
 
@@ -40,7 +41,8 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       <SensorProvider>
         <BackendDataProvider>
           <SystemSocketProvider>
-            <GpsTrackingProvider>
+            <AlarmAudioProvider>
+              <GpsTrackingProvider>
             <div className="min-h-screen bg-background">
               {sidebarOpen && (
                 <button
@@ -63,7 +65,8 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
               </div>
               <Toaster position="top-right" />
             </div>
-            </GpsTrackingProvider>
+              </GpsTrackingProvider>
+            </AlarmAudioProvider>
           </SystemSocketProvider>
         </BackendDataProvider>
       </SensorProvider>

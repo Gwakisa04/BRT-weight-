@@ -74,8 +74,8 @@ export function TicketReceiptDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto print:max-w-none print:border-0 print:shadow-none print:p-0">
+        <DialogHeader className="ticket-print-hide">
           <DialogTitle>Weighing Receipt</DialogTitle>
           <DialogDescription>
             Ticket {measurement.ticketNumber} — {resolvedVehicle?.plateNumber ?? 'Unknown vehicle'}

@@ -64,6 +64,11 @@ export function useSystemStatus() {
   }, [setSystemStatus]);
 
   const toggleBuzzer = useCallback(() => {
+    const settings = useLoadGuardStore.getState().settings;
+    if (!settings.alarmEnabled) {
+      return;
+    }
+
     const active = !systemStatus.buzzerActive;
     setSystemStatus({ buzzerActive: active });
     if (active) socketService.triggerAlarm();

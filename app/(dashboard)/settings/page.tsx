@@ -32,6 +32,7 @@ import {
 
 export default function SettingsPage() {
   const { settings, updateSettings, theme, setTheme } = useLoadGuardStore();
+  const setSystemStatus = useLoadGuardStore((s) => s.setSystemStatus);
   const [localSettings, setLocalSettings] = useState(settings);
 
   const handleSave = () => {
@@ -343,7 +344,15 @@ export default function SettingsPage() {
               <Button 
                 variant="outline" 
                 disabled={!localSettings.alarmEnabled}
-                onClick={() => toast.info('Testing alarm...')}
+                onClick={() => {
+                  setSystemStatus({ buzzerActive: true });
+                  toast.success('Alarm test playing', {
+                    description: 'Using alarm.mp3 — stops automatically after 3 seconds',
+                  });
+                  window.setTimeout(() => {
+                    setSystemStatus({ buzzerActive: false });
+                  }, 3000);
+                }}
                 className="gap-2"
               >
                 <Volume2 className="h-4 w-4" />

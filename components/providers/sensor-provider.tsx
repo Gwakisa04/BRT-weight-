@@ -3,9 +3,14 @@
 import { useEffect, useRef } from 'react';
 import { useLoadGuardStore } from '@/store/loadguard-store';
 import type { LiveWeight } from '@/types';
+import { isDemoOverloadVehicle } from '@/lib/alarm-sound';
 
 /** Deterministic target weight ratio (85–110%) from vehicle id. */
-function targetRatioForVehicle(vehicleId: string): number {
+function targetRatioForVehicle(vehicleId: string, plateNumber?: string): number {
+  if (isDemoOverloadVehicle(plateNumber)) {
+    return 1.12;
+  }
+
   let hash = 0;
   for (let i = 0; i < vehicleId.length; i++) {
     hash = (hash * 31 + vehicleId.charCodeAt(i)) | 0;
@@ -36,7 +41,8 @@ export function SensorProvider({ children }: { children: React.ReactNode }) {
         if (selectedVehicle) {
           sessionVehicleId = selectedVehicle.id;
           targetWeight = Math.round(
-            selectedVehicle.allowedWeight * targetRatioForVehicle(selectedVehicle.id)
+            selectedVehicle.allowedWeight *
+              targetRatioForVehicle(selectedVehicle.id, selectedVehicle.plateNumber)
           );
         }
       }
@@ -58,7 +64,8 @@ export function SensorProvider({ children }: { children: React.ReactNode }) {
       if (selectedVehicle.id !== sessionVehicleId) {
         sessionVehicleId = selectedVehicle.id;
         targetWeight = Math.round(
-          selectedVehicle.allowedWeight * targetRatioForVehicle(selectedVehicle.id)
+          selectedVehicle.allowedWeight *
+            targetRatioForVehicle(selectedVehicle.id, selectedVehicle.plateNumber)
         );
         currentWeight = 0;
         stableCounter = 0;
